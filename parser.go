@@ -90,6 +90,8 @@ func (p *parser) parseOperand() Expr {
 			return &literal{value: true}
 		case "FALSE":
 			return &literal{value: false}
+		case "NULL":
+			return &literal{value: nil}
 		}
 		if p.tok == LPAREN {
 			return p.parseCall(x)
