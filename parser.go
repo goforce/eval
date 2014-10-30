@@ -135,5 +135,6 @@ func (p *parser) parseCall(ident *ident) Expr {
 		}
 	}
 	p.next() // consume RPAREN
+	ident.name = strings.ToUpper(ident.name)
 	return &call{ident: ident, args: args}
 }

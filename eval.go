@@ -103,6 +103,9 @@ func (e *unary) Eval(context *context) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	if v == nil {
+		return nil, nil
+	}
 	switch e.op {
 	case NOT:
 		switch v.(type) {
@@ -148,13 +151,17 @@ func (e *binary) Eval(context *context) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	r, ok, _ := tryNils(ix, iy, e.op)
+	if ok {
+		return r, nil
+	}
 	switch e.op {
 	case ADD, LT, LTE, GT, GTE:
-		r, ok, s := tryNumbers(ix, iy, e.op)
+		r, ok, _ := tryNumbers(ix, iy, e.op)
 		if ok {
 			return r, nil
 		}
-		r, ok, s = tryStrings(ix, iy, e.op)
+		r, ok, s := tryStrings(ix, iy, e.op)
 		if ok {
 			return r, nil
 		}
@@ -166,15 +173,15 @@ func (e *binary) Eval(context *context) (interface{}, error) {
 		}
 		return nil, errors.New("not a number:" + fmt.Sprint(s))
 	case EQ, NEQ:
-		r, ok, s := tryNumbers(ix, iy, e.op)
+		r, ok, _ := tryNumbers(ix, iy, e.op)
 		if ok {
 			return r, nil
 		}
-		r, ok, s = tryBools(ix, iy, e.op)
+		r, ok, _ = tryBools(ix, iy, e.op)
 		if ok {
 			return r, nil
 		}
-		r, ok, s = tryStrings(ix, iy, e.op)
+		r, ok, s := tryStrings(ix, iy, e.op)
 		if ok {
 			return r, nil
 		}
@@ -192,6 +199,20 @@ func (e *binary) Eval(context *context) (interface{}, error) {
 
 func (e binary) String() string {
 	return fmt.Sprint(" ( ", e.x, e.op, e.y, " ) ")
+}
+
+func tryNils(ix, iy interface{}, op token) (interface{}, bool, interface{}) {
+	if ix == nil || iy == nil {
+		switch op {
+		case EQ:
+			return ix == nil && iy == nil, true, nil
+		case NEQ:
+			return ix != nil || iy != nil, true, nil
+		default:
+			return nil, true, nil
+		}
+	}
+	return nil, false, nil
 }
 
 func tryNumbers(ix, iy interface{}, op token) (interface{}, bool, interface{}) {
