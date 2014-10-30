@@ -66,7 +66,13 @@ type call struct {
 	args  []Expr
 }
 
-func (e *call) Eval(context *context) (interface{}, error) {
+func (e *call) Eval(context *context) (value interface{}, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			value = nil
+			err = errors.New(fmt.Sprint("error in call of ", e.ident.name, ": ", r))
+		}
+	}()
 	var list []interface{}
 	for _, p := range e.args {
 		v, err := p.Eval(context)
