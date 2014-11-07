@@ -12,7 +12,7 @@ const (
 	ISO8601 string = "2006-01-02T15:04:05.999Z0700"
 )
 
-func builtin(name string, args []interface{}, context *context) (val interface{}, err error) {
+func builtin(name string, args []interface{}, context Context) (val interface{}, err error) {
 	switch name {
 	//salesforce text functions: CASESAFEID, GETSESSIONID, HYPERLINK, IMAGE, ISPICKVAL not implemented as too specific
 	// TEXT should be avoided, use FORMAT instead
@@ -169,7 +169,7 @@ func builtin(name string, args []interface{}, context *context) (val interface{}
 		n1 := GetNumberAsInt(args, 0)
 		n2 := GetNumberAsInt(args, 1)
 		n3 := GetNumberAsInt(args, 2)
-		return time.Date(n1, time.Month(n2), n3, 0, 0, 0, 0, context.localTimeZone), nil
+		return time.Date(n1, time.Month(n2), n3, 0, 0, 0, 0, context.cast().localTimeZone), nil
 	case "DATEVALUE":
 		s1 := MustBeString(args, 0)
 		s2 := "2006-01-02"
@@ -188,10 +188,10 @@ func builtin(name string, args []interface{}, context *context) (val interface{}
 		return new(big.Rat).SetInt64(int64(d1.Month())), nil
 	case "NOW":
 		NumOfParams(args, 0)
-		return time.Now().In(context.localTimeZone), nil
+		return time.Now().In(context.cast().localTimeZone), nil
 	case "TODAY":
 		NumOfParams(args, 0)
-		return time.Now().In(context.localTimeZone).Truncate(time.Hour * 24), nil
+		return time.Now().In(context.cast().localTimeZone).Truncate(time.Hour * 24), nil
 	case "YEAR":
 		NumOfParams(args, 1)
 		d1 := MustBeDate(args, 0)
@@ -248,7 +248,7 @@ func builtin(name string, args []interface{}, context *context) (val interface{}
 		var a []string
 		for i, v := range args[1:] {
 			if v != nil {
-				s := MustBeString(args, i)
+				s := MustBeString(args, i+1)
 				if s != "" {
 					a = append(a, s)
 				}

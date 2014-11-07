@@ -5,6 +5,14 @@ import (
 	"time"
 )
 
+type Context interface {
+	AddFunctions(Functions) Context
+	AddValues(Values) Context
+	SetTimeZone(*time.Location) Context
+	ParseDate(format, value string) (time.Time, error)
+	cast() *context
+}
+
 type context struct {
 	functions     []Functions
 	values        []Values
@@ -12,30 +20,53 @@ type context struct {
 }
 
 func NewContext() *context {
-	return &context{functions: make([]Functions, 0, 3), values: make([]Values, 0, 3), localTimeZone: time.Now().Location()}
+	return &context{functions: make([]Functions, 0, 5), values: make([]Values, 0, 5), localTimeZone: time.Now().Location()}
 }
 
-func (context *context) AddFunctions(functions Functions) *context {
+func (context *context) cast() *context {
+	return context
+}
+
+func (context *context) AddFunctions(functions Functions) Context {
+	if context == nil {
+		context = NewContext()
+	}
 	if functions != nil {
 		context.functions = append(context.functions, functions)
 	}
 	return context
 }
 
-func (context *context) AddValues(values Values) *context {
+func (context *context) AddValues(values Values) Context {
+	if context == nil {
+		context = NewContext()
+	}
 	if values != nil {
 		context.values = append(context.values, values)
 	}
 	return context
 }
 
-func (context *context) SetTimeZone(location *time.Location) *context {
+func (context *context) SetTimeZone(location *time.Location) Context {
+	if context == nil {
+		context = NewContext()
+	}
 	if location != nil {
 		context.localTimeZone = location
-	} else {
-		context.localTimeZone = time.Now().Location()
 	}
 	return context
+}
+
+func (context *context) ParseDate(format, value string) (time.Time, error) {
+	layout := format
+	for _, f := range mapping {
+		layout = strings.Replace(layout, f.human, f.golang, 1)
+	}
+	if strings.Contains(layout, "Z") {
+		return time.Parse(layout, value)
+	} else {
+		return time.ParseInLocation(layout, value, context.localTimeZone)
+	}
 }
 
 type f struct {
@@ -62,16 +93,4 @@ var mapping = []f{
 	f{"s", "5"},
 	f{"a", "PM"},
 	f{"Z", "Z0700"},
-}
-
-func (context *context) ParseDate(format, value string) (time.Time, error) {
-	layout := format
-	for _, f := range mapping {
-		layout = strings.Replace(layout, f.human, f.golang, 1)
-	}
-	if strings.Contains(layout, "Z") {
-		return time.Parse(layout, value)
-	} else {
-		return time.ParseInLocation(layout, value, context.localTimeZone)
-	}
 }

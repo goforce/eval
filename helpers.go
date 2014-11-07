@@ -58,7 +58,6 @@ func MustBeNumberAsInt(args []interface{}, index int) int {
 }
 
 func GetNumber(args []interface{}, index int) *big.Rat {
-	MinNumOfParams(args, index)
 	switch args[index].(type) {
 	case *big.Rat:
 		return args[index].(*big.Rat)
@@ -76,8 +75,8 @@ func GetNumberAsInt(args []interface{}, index int) int {
 	return int(f)
 }
 
-func MinNumOfParams(args []interface{}, index int) {
-	if index >= len(args) {
-		panic(fmt.Sprint("should have at least ", index, " parameters, actual ", len(args)))
+func MinNumOfParams(args []interface{}, expected int) {
+	if expected > len(args) {
+		panic(fmt.Sprint("should have at least ", expected, " parameters, actual ", len(args)))
 	}
 }

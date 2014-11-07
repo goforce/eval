@@ -35,6 +35,11 @@ func Parse(src []byte) (expr Expr, err error) {
 	return
 }
 
+// ParseIdent is shortcut function to get value from context
+func ParseIdent(name string) Expr {
+	return &ident{name: name}
+}
+
 func (p *parser) next() {
 	p.tok, p.lit = p.scanner.scan()
 }

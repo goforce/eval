@@ -8,7 +8,7 @@ import (
 )
 
 type Expr interface {
-	Eval(*context) (interface{}, error)
+	Eval(Context) (interface{}, error)
 	String() string
 }
 
@@ -36,8 +36,8 @@ type ident struct {
 	name string
 }
 
-func (e *ident) Eval(context *context) (interface{}, error) {
-	for _, fn := range context.values {
+func (e *ident) Eval(context Context) (interface{}, error) {
+	for _, fn := range context.cast().values {
 		if v, ok := fn(e.name); ok {
 			return validate(v, e.name)
 		}
@@ -53,7 +53,7 @@ type literal struct {
 	value interface{}
 }
 
-func (e *literal) Eval(context *context) (interface{}, error) {
+func (e *literal) Eval(context Context) (interface{}, error) {
 	return e.value, nil
 }
 
@@ -66,9 +66,12 @@ type call struct {
 	args  []Expr
 }
 
-func (e *call) Eval(context *context) (value interface{}, err error) {
+func (e *call) Eval(context Context) (value interface{}, err error) {
 	defer func() {
 		if r := recover(); r != nil {
+			if err, ok := r.(error); ok {
+				panic(err)
+			}
 			value = nil
 			err = errors.New(fmt.Sprint("error in call of ", e.ident.name, ": ", r))
 		}
@@ -81,7 +84,7 @@ func (e *call) Eval(context *context) (value interface{}, err error) {
 		}
 		list = append(list, v)
 	}
-	for _, fn := range context.functions {
+	for _, fn := range context.cast().functions {
 		if v, err := fn(e.ident.name, list); err == nil {
 			return validate(v, e.ident.name)
 		} else if _, ok := err.(NOFUNC); !ok {
@@ -104,7 +107,7 @@ type unary struct {
 	x  Expr
 }
 
-func (e *unary) Eval(context *context) (interface{}, error) {
+func (e *unary) Eval(context Context) (interface{}, error) {
 	v, err := e.x.Eval(context)
 	if err != nil {
 		return nil, err
@@ -148,7 +151,7 @@ type binary struct {
 	y  Expr
 }
 
-func (e *binary) Eval(context *context) (interface{}, error) {
+func (e *binary) Eval(context Context) (interface{}, error) {
 	ix, err := e.x.Eval(context)
 	if err != nil {
 		return nil, err
