@@ -155,6 +155,14 @@ func builtin(name string, args []interface{}, context Context) (val interface{},
 		NumOfParams(args, 1)
 		s1 := MustBeString(args, 0)
 		return strings.ToUpper(s1), nil
+	case "ISBLANK":
+		NumOfParams(args, 1)
+		if args[0] == nil {
+			return true, nil
+		} else if s, ok := args[0].(string); ok && s == "" {
+			return true, nil
+		}
+		return false, nil
 	case "VALUE":
 		NumOfParams(args, 1)
 		s1 := MustBeString(args, 0)
