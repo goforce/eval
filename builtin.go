@@ -30,7 +30,7 @@ func builtin(name string, args []interface{}, context Context) (val interface{},
 		NumOfParams(args, 2)
 		s1 := MustBeString(args, 0)
 		s2 := MustBeString(args, 1)
-		return new(big.Rat).SetInt64(int64(strings.Index(s1, s2))), nil
+		return new(big.Rat).SetInt64(int64(strings.Index(s1, s2) + 1)), nil
 	case "INCLUDES":
 		NumOfParams(args, 2)
 		s1 := MustBeString(args, 0)
@@ -204,7 +204,12 @@ func builtin(name string, args []interface{}, context Context) (val interface{},
 		NumOfParams(args, 1)
 		d1 := MustBeDate(args, 0)
 		return new(big.Rat).SetInt64(int64(d1.Year())), nil
-		// salesforce logical functions: AND, NOT, OR should not be used, use logical operators
+	// salesforce numerical functions: TBC
+	case "ABS":
+		NumOfParams(args, 1)
+		n1 := MustBeNumber(args, 0)
+		return n1.Abs(n1), nil
+	// salesforce logical functions: AND, NOT, OR should not be used, use logical operators
 	case "CASE":
 		MinNumOfParams(args, 3)
 		i := 1
