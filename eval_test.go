@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func test_values(name string) (interface{}, bool) {
@@ -24,7 +25,7 @@ func test_functions(name string, args []interface{}) (interface{}, error) {
 	return nil, NOFUNC{}
 }
 
-var test_context = NewContext().AddValues(test_values).AddFunctions(test_functions)
+var test_context = NewContext().AddValues(test_values).AddFunctions(test_functions).SetTimeZone(time.FixedZone("MY", 0))
 
 func TestParsing(t *testing.T) {
 	{
@@ -69,10 +70,10 @@ func TestStringFunctions(t *testing.T) {
 	mustErrorEvaluating(t, "find('')", "function find: failed to check number of parameters, 1 parameter")
 	mustErrorEvaluating(t, "find('',true)", "function find: failed to check type of parameters, boolean")
 	mustErrorEvaluating(t, "find('',0)", "function find: failed to check type of parameters, number")
-	mustResult(t, "find('"+s1+"',' this')", big.NewRat(0, 1))
-	mustResult(t, "find('"+s1+"','this')", big.NewRat(1, 1))
-	mustResult(t, "find('"+s2+"','Вот ')", big.NewRat(1, 1))
-	mustResult(t, "find('"+s2+"','Во т')", big.NewRat(-1, 1))
+	mustResult(t, "find('"+s1+"',' this')", big.NewRat(1, 1))
+	mustResult(t, "find('"+s1+"','this')", big.NewRat(2, 1))
+	mustResult(t, "find('"+s2+"','Вот ')", big.NewRat(2, 1))
+	mustResult(t, "find('"+s2+"','Во т')", big.NewRat(0, 1))
 
 	mustErrorEvaluating(t, "includes()", "function includes: failed to check number of parameters, no parameters")
 	mustErrorEvaluating(t, "includes('',0,'')", "function includes: failed to check number of parameters, 3 parameters")
@@ -94,6 +95,12 @@ func TestStringFunctions(t *testing.T) {
 	mustResult(t, "left('"+s2+"',0)", "")
 	mustResult(t, "left('"+s2+"',"+strconv.Itoa(s2len)+")", s2)
 	mustResult(t, "left('"+s2+"',"+strconv.Itoa(s2len+1)+")", s2)
+
+	mustErrorEvaluating(t, "len()", "function len: failed to check number of parameters, no parameters")
+	mustErrorEvaluating(t, "len('','')", "function len: failed to check number of parameters, 2 parameters")
+	mustErrorEvaluating(t, "len(0)", "function len: failed to check type of parameter, number parameter")
+	mustResult(t, "len('"+s1+"')", big.NewRat(int64(s1len), 1))
+	mustResult(t, "len('"+s2+"')", big.NewRat(int64(s2len), 1))
 
 	mustErrorEvaluating(t, "lower()", "function lower: failed to check number of parameters, no parameters")
 	mustErrorEvaluating(t, "lower('','')", "function lower: failed to check number of parameters, 2 parameters")
@@ -117,7 +124,7 @@ func TestStringFunctions(t *testing.T) {
 	mustResult(t, "lpad('"+s2+"',"+strconv.Itoa(s2len-1)+")", string([]rune(s2)[0:s2len-1]))
 	mustResult(t, "lpad('"+s2+"',"+strconv.Itoa(s2len+5)+",'Вот')", "ВотВо"+s2)
 
-	mustErrorEvaluating(t, "mid()", "function mid: mid to check number of parameters, no parameters")
+	mustErrorEvaluating(t, "mid()", "function mid: failed to check number of parameters, no parameters")
 	mustErrorEvaluating(t, "mid('',0)", "function mid: failed to check number of parameters, 2 parameters")
 	mustErrorEvaluating(t, "mid('',0,0,0)", "function mid: failed to check number of parameters, 4 parameter")
 	mustResult(t, "mid('"+s1+"',3,5)", string([]rune(s1)[2:7]))
@@ -152,6 +159,25 @@ func TestStringFunctions(t *testing.T) {
 	mustResult(t, "rpad('"+s2+"',"+strconv.Itoa(s2len)+")", s2)
 	mustResult(t, "rpad('"+s2+"',"+strconv.Itoa(s2len-1)+")", string([]rune(s2)[0:s2len-1]))
 	mustResult(t, "rpad('"+s2+"',"+strconv.Itoa(s2len+5)+",'Вот')", s2+"ВотВо")
+
+	mustErrorEvaluating(t, "substitute()", "function substitute: failed to check number of parameters, no parameters")
+	mustErrorEvaluating(t, "substitute('','')", "function substitute: failed to check number of parameters, 2 parameters")
+	mustErrorEvaluating(t, "substitute(0,0,0)", "function substitute: failed to check type of parameters, number parameter")
+	mustResult(t, "substitute('replace me',' ','5')", "replace5me")
+	mustResult(t, "substitute('Вот есть одна вещь','одна','вещь')", "Вот есть вещь вещь")
+	mustResult(t, "replace('Вот есть одна вещь','Вот','вещь')", "вещь есть одна вещь")
+
+	mustErrorEvaluating(t, "text()", "function text: failed to check number of parameters, no parameters")
+	mustErrorEvaluating(t, "text('','')", "function text: failed to check number of parameters, 2 parameters")
+	mustResult(t, "text('"+s1+"')", s1)
+	mustResult(t, "text(314)", "314")
+	mustResult(t, "text(true)", "true")
+	//	mustResult(t, "text(datetimevalue('2001-01-02T01:02:03Z'))", "2001-01-02T01:02:03Z")
+
+	mustErrorEvaluating(t, "datevalue()", "function datevalue: failed to check number of parameters, no parameters")
+	mustErrorEvaluating(t, "datevalue(0)", "function datevalue: failed to check type of parameters, number parameter")
+	mustResult(t, "datevalue('2001-01-02')", time.Date(2001, 01, 02, 0, 0, 0, 0, test_context.(*context).localTimeZone))
+
 }
 
 func mustErrorEvaluating(t *testing.T, expression string, message ...string) {

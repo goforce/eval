@@ -2,6 +2,7 @@ package eval
 
 import (
 	"fmt"
+	"math"
 	"math/big"
 	"strings"
 	"time"
@@ -50,6 +51,7 @@ func builtin(name string, args []interface{}, context Context) (val interface{},
 		s1 := MustBeString(args, 0)
 		return strings.ToLower(s1), nil
 	case "LPAD":
+		MinNumOfParams(args, 2)
 		n1 := GetNumberAsInt(args, 1)
 		s1 := MustBeString(args, 0)
 		s2 := " "
@@ -91,6 +93,7 @@ func builtin(name string, args []interface{}, context Context) (val interface{},
 		}
 		return substr(s1, -n1, -1), nil
 	case "RPAD":
+		MinNumOfParams(args, 2)
 		n1 := GetNumberAsInt(args, 1)
 		s1 := MustBeString(args, 0)
 		s2 := " "
@@ -109,7 +112,7 @@ func builtin(name string, args []interface{}, context Context) (val interface{},
 			s1r = append(s1r, s2r[i%len(s2r)])
 		}
 		return string(s1r), nil
-	case "SUBSTITUTE":
+	case "SUBSTITUTE", "REPLACE":
 		NumOfParams(args, 3)
 		s1 := MustBeString(args, 0)
 		s2 := MustBeString(args, 1)
@@ -121,7 +124,7 @@ func builtin(name string, args []interface{}, context Context) (val interface{},
 		switch v1.(type) {
 		case string:
 			return v1.(string), nil
-		case big.Rat:
+		case *big.Rat:
 			return v1.(*big.Rat).String(), nil
 		case bool:
 			if v1.(bool) {
@@ -155,14 +158,6 @@ func builtin(name string, args []interface{}, context Context) (val interface{},
 		NumOfParams(args, 1)
 		s1 := MustBeString(args, 0)
 		return strings.ToUpper(s1), nil
-	case "ISBLANK":
-		NumOfParams(args, 1)
-		if args[0] == nil {
-			return true, nil
-		} else if s, ok := args[0].(string); ok && s == "" {
-			return true, nil
-		}
-		return false, nil
 	case "VALUE":
 		NumOfParams(args, 1)
 		s1 := MustBeString(args, 0)
@@ -171,6 +166,14 @@ func builtin(name string, args []interface{}, context Context) (val interface{},
 			return f, nil
 		}
 		panic(fmt.Sprint("not a number", s1))
+	case "ISNUMBER":
+		NumOfParams(args, 1)
+		s1 := MustBeString(args, 0)
+		_, ok := new(big.Rat).SetString(s1)
+		if ok {
+			return true, nil
+		}
+		return false, nil
 	// salesforce date functions. DATEVALUE accepts additional format parameter
 	case "DATE":
 		NumOfParams(args, 3)
@@ -179,8 +182,18 @@ func builtin(name string, args []interface{}, context Context) (val interface{},
 		n3 := GetNumberAsInt(args, 2)
 		return time.Date(n1, time.Month(n2), n3, 0, 0, 0, 0, context.cast().localTimeZone), nil
 	case "DATEVALUE":
+		MinNumOfParams(args, 1)
 		s1 := MustBeString(args, 0)
 		s2 := "2006-01-02"
+		if len(args) > 1 {
+			NumOfParams(args, 2)
+			s2 = MustBeString(args, 1)
+		}
+		return context.ParseDate(s2, s1)
+	case "DATETIMEVALUE":
+		MinNumOfParams(args, 1)
+		s1 := MustBeString(args, 0)
+		s2 := ISO8601
 		if len(args) > 1 {
 			NumOfParams(args, 2)
 			s2 = MustBeString(args, 1)
@@ -208,7 +221,75 @@ func builtin(name string, args []interface{}, context Context) (val interface{},
 	case "ABS":
 		NumOfParams(args, 1)
 		n1 := MustBeNumber(args, 0)
-		return n1.Abs(n1), nil
+		return new(big.Rat).Abs(n1), nil
+	case "CEILING":
+		NumOfParams(args, 1)
+		n1 := MustBeNumber(args, 0)
+		c := new(big.Int)
+		if n1.Sign() < 0 {
+			c = c.Sub(n1.Num(), n1.Denom())
+		} else {
+			c = c.Add(n1.Num(), n1.Denom())
+		}
+		return new(big.Rat).SetInt(c.Quo(c, n1.Denom())), nil
+	case "FLOOR":
+		NumOfParams(args, 1)
+		n1 := MustBeNumber(args, 0)
+		return new(big.Rat).SetInt(new(big.Int).Quo(n1.Num(), n1.Denom())), nil
+	case "ROUND":
+		NumOfParams(args, 1)
+		n1 := MustBeNumber(args, 0)
+		n2 := GetNumberAsInt(args, 1)
+		e := new(big.Rat).SetFloat64(math.Pow10(n2))
+		x := new(big.Rat).Mul(n1, e)
+		x = x.Add(x, big.NewRat(int64(n1.Sign()), 2))
+		z := new(big.Int).Quo(x.Num(), x.Denom())
+		return x.Quo(x.SetInt(z), e), nil
+	case "MOD":
+		NumOfParams(args, 2)
+		n1 := MustBeNumber(args, 0)
+		n2 := MustBeNumber(args, 1)
+		q := new(big.Rat).Quo(n1, n2)
+		r := new(big.Int).Quo(q.Num(), q.Denom())
+		return new(big.Rat).Sub(n1, new(big.Rat).Mul(n2, q.SetInt(r))), nil
+	case "MIN":
+		var nm *big.Rat
+		for i := 0; i < len(args); i++ {
+			var n *big.Rat
+			switch args[i].(type) {
+			case nil:
+				n = nil
+			case *big.Rat:
+				n = MustBeNumber(args, i)
+			case string:
+				n = GetNumber(args, i)
+			default:
+				panic(fmt.Sprint("unsupported type:", args[i]))
+			}
+			if n != nil && (nm == nil || nm.Cmp(n) > 0) {
+				nm = n
+			}
+		}
+		return nm, nil
+	case "MAX":
+		var nm *big.Rat
+		for i := 0; i < len(args); i++ {
+			var n *big.Rat
+			switch args[i].(type) {
+			case nil:
+				n = nil
+			case *big.Rat:
+				n = MustBeNumber(args, i)
+			case string:
+				n = GetNumber(args, i)
+			default:
+				panic(fmt.Sprint("unsupported type:", args[i]))
+			}
+			if n != nil && (nm == nil || nm.Cmp(n) < 0) {
+				nm = n
+			}
+		}
+		return nm, nil
 	// salesforce logical functions: AND, NOT, OR should not be used, use logical operators
 	case "CASE":
 		MinNumOfParams(args, 3)
@@ -249,9 +330,21 @@ func builtin(name string, args []interface{}, context Context) (val interface{},
 			return args[1], nil
 		}
 		return args[2], nil
-	case "NULLVALUE":
+	// salesforce informational functions: BLANKVALUE, NULLVALUE, ISBLANK. ISNULL
+	// there is no PRIORVALUE
+	case "ISBLANK", "ISNULL":
+		NumOfParams(args, 1)
+		if args[0] == nil {
+			return true, nil
+		} else if s, ok := args[0].(string); ok && s == "" {
+			return true, nil
+		}
+		return false, nil
+	case "NULLVALUE", "BLANKVALUE":
 		NumOfParams(args, 2)
 		if args[0] == nil {
+			return args[1], nil
+		} else if s, ok := args[0].(string); ok && s == "" {
 			return args[1], nil
 		}
 		return args[0], nil

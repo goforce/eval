@@ -53,7 +53,8 @@ func (p *parser) parseExpr(x Expr) Expr {
 	}
 	op := p.tok
 	p.next()
-	y := p.parseOperand()
+	y := p.parseUnaryExpr()
+	//y := p.parseOperand()
 	if p.tok == RPAREN || p.tok == EOE || p.tok == COMMA {
 		return &binary{x: x, op: op, y: y}
 	}

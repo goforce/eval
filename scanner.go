@@ -49,6 +49,9 @@ func (s *scanner) errmsg(msg string) string {
 func (s *scanner) scan() (token, string) {
 	s.skipWhitespace()
 	switch {
+	case s.ch == '{':
+		t, l := s.scanCurlyIdentifier()
+		return t, l
 	case isLetter(s.ch):
 		t, l := s.scanIdentifier()
 		return t, l
@@ -93,6 +96,16 @@ func (s *scanner) scanIdentifier() (token, string) {
 		s.next()
 	}
 	return IDENT, string(s.src[offs:s.offset])
+}
+
+func (s *scanner) scanCurlyIdentifier() (token, string) {
+	s.next() // eat opening {
+	offs := s.offset
+	for prev := ' '; s.ch != '}' && prev != '\\'; s.next() {
+		prev = s.ch
+	}
+	s.next() // eat closing
+	return IDENT, string(s.src[offs : s.offset-1])
 }
 
 func (s *scanner) scanNumber() (token, string) {

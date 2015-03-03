@@ -182,15 +182,21 @@ func (e *binary) Eval(context Context) (interface{}, error) {
 		}
 		return nil, errors.New("not a number:" + fmt.Sprint(s))
 	case EQ, NEQ:
-		r, ok, _ := tryNumbers(ix, iy, e.op)
+		r, ok, s := tryNumbers(ix, iy, e.op)
 		if ok {
 			return r, nil
 		}
-		r, ok, _ = tryBools(ix, iy, e.op)
+		if s != nil {
+			return nil, errors.New("not a number:" + fmt.Sprint(s))
+		}
+		r, ok, s = tryBools(ix, iy, e.op)
 		if ok {
 			return r, nil
 		}
-		r, ok, s := tryStrings(ix, iy, e.op)
+		if s != nil {
+			return nil, errors.New("not a boolean:" + fmt.Sprint(s))
+		}
+		r, ok, s = tryStrings(ix, iy, e.op)
 		if ok {
 			return r, nil
 		}
@@ -227,7 +233,7 @@ func tryNils(ix, iy interface{}, op token) (interface{}, bool, interface{}) {
 func tryNumbers(ix, iy interface{}, op token) (interface{}, bool, interface{}) {
 	x, ok := ix.(*big.Rat)
 	if !ok {
-		return nil, false, ix
+		return nil, false, nil
 	}
 	y, ok := iy.(*big.Rat)
 	if !ok {
@@ -285,7 +291,7 @@ func tryStrings(ix, iy interface{}, op token) (interface{}, bool, interface{}) {
 func tryBools(ix, iy interface{}, op token) (interface{}, bool, interface{}) {
 	x, ok := ix.(bool)
 	if !ok {
-		return nil, false, ix
+		return nil, false, nil
 	}
 	y, ok := iy.(bool)
 	if !ok {

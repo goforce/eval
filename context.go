@@ -59,8 +59,10 @@ func (context *context) SetTimeZone(location *time.Location) Context {
 
 func (context *context) ParseDate(format, value string) (time.Time, error) {
 	layout := format
-	for _, f := range mapping {
-		layout = strings.Replace(layout, f.human, f.golang, 1)
+	if !strings.HasPrefix(layout, "2006") {
+		for _, f := range mapping {
+			layout = strings.Replace(layout, f.human, f.golang, 1)
+		}
 	}
 	if strings.Contains(layout, "Z") {
 		return time.Parse(layout, value)
