@@ -21,6 +21,9 @@ func NumOfParams(args []interface{}, expected int) {
 }
 
 func MustBeString(args []interface{}, index int) string {
+	if args[index] == nil {
+		return ""
+	}
 	val, ok := args[index].(string)
 	if !ok {
 		panic(fmt.Sprint("parameter ", index, " not a string ", args[index]))
