@@ -21,7 +21,10 @@ func ParseString(src string) (expr Expr, err error) {
 func Parse(src []byte) (expr Expr, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.New(fmt.Sprint(r))
+			var ok bool
+			if err, ok = r.(ScannerError); !ok {
+				err = errors.New(fmt.Sprint(r))
+			}
 		}
 	}()
 	p := parser{}
@@ -30,7 +33,7 @@ func Parse(src []byte) (expr Expr, err error) {
 	expr = p.parseExpr(nil)
 	p.next()
 	if p.tok != EOE {
-		return nil, errors.New(p.scanner.errmsg("no matching opening parenthesis"))
+		return nil, p.scanner.newError("no matching opening parenthesis")
 	}
 	return
 }
@@ -69,7 +72,7 @@ func (p *parser) parseParenExpr() Expr {
 	p.next() // consume opening parenthesis
 	x := p.parseExpr(nil)
 	if p.tok != RPAREN {
-		panic(p.scanner.errmsg("no closing parenthesis"))
+		panic(p.scanner.newError("no closing parenthesis"))
 	}
 	p.next() // consume closing parenthesis
 	return x
@@ -110,7 +113,7 @@ func (p *parser) parseOperand() Expr {
 	case NUMBER:
 		v, ok := new(big.Rat).SetString(p.lit)
 		if !ok {
-			panic(p.scanner.errmsg("not a number: " + p.lit))
+			panic(p.scanner.newError("not a number: " + p.lit))
 		}
 		x := &literal{value: v}
 		p.next()
@@ -120,7 +123,7 @@ func (p *parser) parseOperand() Expr {
 	case RPAREN:
 		return nil
 	}
-	panic(p.scanner.errmsg("operand expected"))
+	panic(p.scanner.newError("operand expected"))
 }
 
 func (p *parser) parseCall(ident *ident) Expr {
@@ -132,7 +135,7 @@ func (p *parser) parseCall(ident *ident) Expr {
 			args = append(args, arg)
 		}
 		if p.tok != COMMA && p.tok != RPAREN {
-			panic(p.scanner.errmsg("comma or closing parenthesis expected"))
+			panic(p.scanner.newError("comma or closing parenthesis expected"))
 		}
 		if p.tok == COMMA {
 			p.next()

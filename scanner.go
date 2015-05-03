@@ -1,7 +1,6 @@
 package eval
 
 import (
-	"fmt"
 	"unicode/utf8"
 )
 
@@ -31,7 +30,7 @@ func (s *scanner) next() {
 		}
 		r, w := utf8.DecodeRune(s.src[s.nxOffset:])
 		if r == utf8.RuneError && w == 1 {
-			panic(s.errmsg("illegal utf-8 character"))
+			panic(s.newError("illegal utf-8 character"))
 		}
 		s.nxOffset += w
 		s.ch = r
@@ -42,8 +41,8 @@ func (s *scanner) next() {
 	}
 }
 
-func (s *scanner) errmsg(msg string) string {
-	return msg + " at line:" + fmt.Sprint(s.linePos) + " col:" + fmt.Sprint(s.charPos)
+func (s *scanner) newError(msg string) ScannerError {
+	return ScannerError{message: msg, line: s.linePos, position: s.charPos}
 }
 
 func (s *scanner) scan() (token, string) {
